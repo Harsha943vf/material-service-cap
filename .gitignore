@@ -1,0 +1,25 @@
+node_modules/
+target/
+_out/
+gen/
+.cds/
+
+.cdsrc-private.json
+default-*.json
+
+# SQLite
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# MTA
+mta_archives/
+*_mta_build_tmp
+*.mtar
+
+# OS files
+.DS_Store
+desktop.ini
+
+# @cap-js/cds-typer
+@cds-models

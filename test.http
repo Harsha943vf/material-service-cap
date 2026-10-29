@@ -1,0 +1,385 @@
+############################################
+# CAP BACKEND - MANUAL TEST SUITE
+############################################
+
+
+############################################
+# MATERIAL SERVICE
+############################################
+
+### 1. Create Material - Success
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1005,
+  "name": "Headset",
+  "plant": "3000",
+  "quantity": 30
+}
+
+
+### 2. Create Material - Invalid Quantity
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1006,
+  "name": "Monitor",
+  "plant": "3000",
+  "quantity": -10
+}
+
+
+### 3. Check Quantity - Success
+POST http://localhost:4004/odata/v4/material/checkQuantity
+Content-Type: application/json
+
+{
+  "quantity": 10
+}
+
+
+### 4. Check Quantity - Invalid
+POST http://localhost:4004/odata/v4/material/checkQuantity
+Content-Type: application/json
+
+{
+  "quantity": -5
+}
+
+
+### 5. Get Material Quantity - Action
+POST http://localhost:4004/odata/v4/material/getMaterialQuantity
+Content-Type: application/json
+
+{
+  "materialID": 1001
+}
+
+
+### 6. Read Material Quantity - Function
+GET http://localhost:4004/odata/v4/material/readMaterialQuantity(materialID=1001)
+
+
+### 7. Set Material Quantity - Success
+POST http://localhost:4004/odata/v4/material/setMaterialQuantity
+Content-Type: application/json
+
+{
+  "materialID": 1001,
+  "quantity": 50
+}
+
+
+### 8. Verify Material Quantity
+GET http://localhost:4004/odata/v4/material/Materials(1001)
+
+
+### 9. Set Material Quantity - Invalid Quantity
+POST http://localhost:4004/odata/v4/material/setMaterialQuantity
+Content-Type: application/json
+
+{
+  "materialID": 1001,
+  "quantity": -5
+}
+
+
+### 10. Set Material Quantity - Material Not Found
+POST http://localhost:4004/odata/v4/material/setMaterialQuantity
+Content-Type: application/json
+
+{
+  "materialID": 99999,
+  "quantity": 50
+}
+
+
+### 11. Read Quantity Before Rollback Test
+GET http://localhost:4004/odata/v4/material/Materials(1001)
+
+
+### 12. Test Transaction Rollback
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/testRollback
+Content-Type: application/json
+
+{
+  "materialID": 1001
+}
+
+
+### 13. Verify Rollback
+# Quantity should NOT become 999.
+GET http://localhost:4004/odata/v4/material/Materials(1001)
+
+
+
+############################################
+# SHIPMENT SERVICE - REGION READ ACCESS
+############################################
+
+### 14. IN Viewer - Should See IN Shipment Only
+GET http://localhost:4004/odata/v4/shipment/Shipments
+Authorization: Basic viewer:viewer123
+
+
+### 15. US Viewer - Should See US Shipment Only
+GET http://localhost:4004/odata/v4/shipment/Shipments
+Authorization: Basic us.viewer:us123
+
+
+### 16. Unknown User - Should Fail Authentication
+GET http://localhost:4004/odata/v4/shipment/Shipments
+Authorization: Basic unknown:wrong
+
+
+
+############################################
+# SHIPMENT SERVICE - ROLE AUTHORIZATION
+############################################
+
+### 17. Viewer Cannot Assign Carrier
+# Expected: 403
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic viewer:viewer123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "carrierID": 1
+}
+
+
+### 18. Operator Cannot Close Shipment
+# Expected: 403
+POST http://localhost:4004/odata/v4/shipment/closeShipment
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101
+}
+
+
+
+############################################
+# CARRIER API
+############################################
+
+### 19. Read Simulated Carrier API
+GET http://localhost:4004/carrier-api/Carriers
+Authorization: Basic manager:manager123
+
+
+
+############################################
+# ASSIGN CARRIER
+############################################
+
+### 20. Operator Assigns Active Carrier to IN Shipment
+# Expected: 200
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "carrierID": 1
+}
+
+
+### 21. Verify Carrier Assignment
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)?$expand=carrier
+Authorization: Basic operator:operator123
+
+
+### 22. Assign Inactive Carrier
+# Expected: 409 - Carrier is inactive
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "carrierID": 3
+}
+
+
+### 23. Assign Nonexistent Carrier
+# Expected: 404
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "carrierID": 99999
+}
+
+
+### 24. Assign Carrier to Nonexistent Shipment
+# Expected: 404
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 99999,
+  "carrierID": 1
+}
+
+
+
+############################################
+# REGION WRITE AUTHORIZATION
+############################################
+
+### 25. IN Operator Cannot Assign Carrier to US Shipment
+# Shipment 102 is expected to be US.
+# Expected: 403
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 102,
+  "carrierID": 1
+}
+
+
+### 26. IN Operator Cannot Report Exception on US Shipment
+# Expected: 403
+POST http://localhost:4004/odata/v4/shipment/reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 102,
+  "reason": "Cross-region test"
+}
+
+
+### 27. IN Manager Cannot Close US Shipment
+# Expected: 403
+POST http://localhost:4004/odata/v4/shipment/closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "shipmentID": 102
+}
+
+
+
+############################################
+# REPORT EXCEPTION
+############################################
+
+### 28. Operator Reports Exception
+# Expected: 200
+POST http://localhost:4004/odata/v4/shipment/reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "reason": "Delivery delayed due to vehicle breakdown"
+}
+
+
+### 29. Verify Exception
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic operator:operator123
+
+
+### 30. Empty Exception Reason
+# Expected: 400
+POST http://localhost:4004/odata/v4/shipment/reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "reason": ""
+}
+
+
+### 31. Exception for Nonexistent Shipment
+# Expected: 404
+POST http://localhost:4004/odata/v4/shipment/reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 99999,
+  "reason": "Testing unknown shipment"
+}
+
+
+
+############################################
+# CLOSE SHIPMENT
+############################################
+
+### 32. Manager Closes IN Shipment
+# Expected: 200
+POST http://localhost:4004/odata/v4/shipment/closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "shipmentID": 101
+}
+
+
+### 33. Verify Shipment Is Closed
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic manager:manager123
+
+
+### 34. Close Already Closed Shipment
+# Expected: 409 - Shipment is already closed
+POST http://localhost:4004/odata/v4/shipment/closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "shipmentID": 101
+}
+
+
+### 35. Assign Carrier to Closed Shipment
+# Expected: 409 - Closed shipments cannot be modified
+POST http://localhost:4004/odata/v4/shipment/assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "carrierID": 2
+}
+
+
+### 36. Report Exception on Closed Shipment
+# Expected: 409 - Closed shipments cannot be modified
+POST http://localhost:4004/odata/v4/shipment/reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "shipmentID": 101,
+  "reason": "Testing closed shipment validation"
+}
+
+
+### 37. Close Nonexistent Shipment
+# Expected: 404
+POST http://localhost:4004/odata/v4/shipment/closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "shipmentID": 99999
+}

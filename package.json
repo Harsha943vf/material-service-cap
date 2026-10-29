@@ -1,0 +1,71 @@
+{
+  "name": "material-service",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@sap/cds": "^10"
+  },
+  "devDependencies": {
+    "@cap-js/cds-test": "^1.0.2",
+    "@cap-js/sqlite": "^3"
+  },
+  "scripts": {
+    "start": "cds-serve"
+  },
+  "private": true,
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "sqlite",
+        "credentials": {
+          "url": "db.sqlite"
+        }
+      },
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "viewer": {
+            "password": "viewer123",
+            "roles": [
+              "ShipmentViewer"
+            ],
+            "attr": {
+              "region": "IN"
+            }
+          },
+          "us.viewer": {
+            "password": "us123",
+            "roles": [
+              "ShipmentViewer"
+            ],
+            "attr": {
+              "region": "US"
+            }
+          },
+          "operator": {
+            "password": "operator123",
+            "roles": [
+              "ShipmentViewer",
+              "ShipmentOperator"
+            ],
+            "attr": {
+              "region": "IN"
+            }
+          },
+          "manager": {
+            "password": "manager123",
+            "roles": [
+              "ShipmentViewer",
+              "ShipmentOperator",
+              "ShipmentManager"
+            ],
+            "attr": {
+              "region": "IN"
+            }
+          },
+          "*": false
+        }
+      }
+    }
+  }
+}
