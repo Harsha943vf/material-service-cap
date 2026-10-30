@@ -98,24 +98,26 @@ export default function (test) {
 
         // ---------------- REGION WRITE ----------------
 
+               // ---------------- REGION WRITE ----------------
+
         it('IN operator cannot assign carrier to US shipment', async () => {
             await expectFail(
                 call(102, 'assignCarrier', { carrierID: 1 }, users.operator),
-                [403, 404]
+                [403]
             );
         });
 
         it('IN operator cannot report exception on US shipment', async () => {
             await expectFail(
                 call(102, 'reportException', { reason: 'Cross-region test' }, users.operator),
-                [403, 404]
+                [403]
             );
         });
 
         it('IN manager cannot close US shipment', async () => {
             await expectFail(
                 call(102, 'closeShipment', {}, users.manager),
-                [403, 404]
+                [403]
             );
         });
 

@@ -139,7 +139,7 @@ Content-Type: application/json
 ############################################
 # REGION WRITE AUTHORIZATION
 # Shipment 102 = US, operator/manager = IN
-# Expected: 403 or 404 -> record what you actually get
+# Expected: 403 Forbidden
 ############################################
 
 ### 25. IN Operator Cannot Assign Carrier to US Shipment
