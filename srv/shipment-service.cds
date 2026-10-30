@@ -7,26 +7,31 @@ service ShipmentService {
             grant: 'READ',
             to: 'ShipmentViewer',
             where: 'region = $user.region'
+        },
+        {
+            grant: ['assignCarrier', 'reportException'],
+            to: 'ShipmentOperator',
+            where: 'region = $user.region'
+        },
+        {
+            grant: 'closeShipment',
+            to: 'ShipmentManager',
+            where: 'region = $user.region'
         }
     ]
-    entity Shipments as projection on db.Shipments;
+    entity Shipments as projection on db.Shipments
+        actions {
+            action assignCarrier(
+                carrierID : Integer
+            ) returns String;
+
+            action reportException(
+                reason : String(500)
+            ) returns String;
+
+            action closeShipment()
+                returns String;
+        };
 
     entity Carriers as projection on db.Carriers;
-
-    @requires: 'ShipmentOperator'
-    action assignCarrier(
-        shipmentID : Integer,
-        carrierID  : Integer
-    ) returns String;
-
-    @requires: 'ShipmentOperator'
-    action reportException(
-        shipmentID : Integer,
-        reason     : String(500)
-    ) returns String;
-
-    @requires: 'ShipmentManager'
-    action closeShipment(
-        shipmentID : Integer
-    ) returns String;
 }

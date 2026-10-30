@@ -1,404 +1,170 @@
 import cds from '@sap/cds';
 
 const test = cds.test(import.meta.dirname + '/..');
-
 const { GET, POST, expect } = test;
 
-describe('ShipmentService', () => {
+// ---------------------------------------------------------
+// HELPERS
+// ---------------------------------------------------------
+const users = {
+    viewer:   { username: 'viewer',    password: 'viewer123' },
+    usViewer: { username: 'us.viewer', password: 'us123' },
+    operator: { username: 'operator',  password: 'operator123' },
+    manager:  { username: 'manager',   password: 'manager123' }
+};
+
+const base = '/odata/v4/shipment';
+
+// Bound action URL: /Shipments(101)/ShipmentService.closeShipment
+const action = (id, name) => `${base}/Shipments(${id})/ShipmentService.${name}`;
+
+// Calls a bound action
+const call = (id, name, body, user) =>
+    POST(action(id, name), body, { auth: user });
+
+// Expects a request to fail with one of the given status codes
+async function expectFail(promise, statuses, message) {
+    try {
+        await promise;
+        throw new Error('Expected request to fail');
+    } catch (error) {
+        if (!error.response) throw error;
+        expect(statuses).to.include(error.response.status);
+        if (message) {
+            expect(error.response.data.error.message).to.equal(message);
+        }
+    }
+}
+
+describe('ShipmentService (bound actions)', () => {
 
     beforeEach(test.data.reset);
 
-    //
-    // C8 - REGION-BASED ACCESS
-    //
+    // ---------------- REGION READ ----------------
 
-    it('IN viewer should see only IN shipment', async () => {
-        const response = await GET(
-            '/odata/v4/shipment/Shipments',
-            {
-                auth: {
-                    username: 'viewer',
-                    password: 'viewer123'
-                }
-            }
-        );
-
-        expect(response.status).to.equal(200);
-        expect(response.data.value).to.have.length(1);
-
-        expect(response.data.value[0].ID).to.equal(101);
-        expect(response.data.value[0].region).to.equal('IN');
+    it('IN viewer sees only IN shipment', async () => {
+        const { status, data } = await GET(`${base}/Shipments`, { auth: users.viewer });
+        expect(status).to.equal(200);
+        expect(data.value).to.have.length(1);
+        expect(data.value[0]).to.include({ ID: 101, region: 'IN' });
     });
 
-    it('US viewer should see only US shipment', async () => {
-        const response = await GET(
-            '/odata/v4/shipment/Shipments',
-            {
-                auth: {
-                    username: 'us.viewer',
-                    password: 'us123'
-                }
-            }
-        );
-
-        expect(response.status).to.equal(200);
-        expect(response.data.value).to.have.length(1);
-
-        expect(response.data.value[0].ID).to.equal(102);
-        expect(response.data.value[0].region).to.equal('US');
+    it('US viewer sees only US shipment', async () => {
+        const { status, data } = await GET(`${base}/Shipments`, { auth: users.usViewer });
+        expect(status).to.equal(200);
+        expect(data.value).to.have.length(1);
+        expect(data.value[0]).to.include({ ID: 102, region: 'US' });
     });
 
+    // ---------------- ROLE AUTHORIZATION ----------------
 
-    //
-    // C8 - ROLE AUTHORIZATION
-    //
-
-    it('viewer should not be allowed to assign carrier', async () => {
-        try {
-            await POST(
-                '/odata/v4/shipment/assignCarrier',
-                {
-                    shipmentID: 101,
-                    carrierID: 1
-                },
-                {
-                    auth: {
-                        username: 'viewer',
-                        password: 'viewer123'
-                    }
-                }
-            );
-
-            throw new Error('Expected request to fail');
-
-        } catch (error) {
-            expect(error.response.status).to.equal(403);
-        }
+    it('viewer cannot assign carrier', async () => {
+        await expectFail(
+            call(101, 'assignCarrier', { carrierID: 1 }, users.viewer),
+            [403]
+        );
     });
 
-
-    //
-    // C6 + C9 - ASSIGN ACTIVE CARRIER
-    //
-
-    it('operator should assign an active carrier', async () => {
-        const response = await POST(
-            '/odata/v4/shipment/assignCarrier',
-            {
-                shipmentID: 101,
-                carrierID: 1
-            },
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
+    it('operator cannot close shipment', async () => {
+        await expectFail(
+            call(101, 'closeShipment', {}, users.operator),
+            [403]
         );
-
-        expect(response.status).to.equal(200);
-
-        const shipment = await GET(
-            '/odata/v4/shipment/Shipments(101)',
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
-        );
-
-        expect(shipment.data.carrier_ID).to.equal(1);
     });
 
+    // ---------------- ASSIGN CARRIER ----------------
 
-    //
-    // C9 - INACTIVE CARRIER
-    //
+    it('operator assigns an active carrier', async () => {
+        const res = await call(101, 'assignCarrier', { carrierID: 1 }, users.operator);
+        expect(res.status).to.equal(200);
 
-    it('operator should not assign an inactive carrier', async () => {
-        try {
-            await POST(
-                '/odata/v4/shipment/assignCarrier',
-                {
-                    shipmentID: 101,
-                    carrierID: 3
-                },
-                {
-                    auth: {
-                        username: 'operator',
-                        password: 'operator123'
-                    }
-                }
-            );
-
-            throw new Error('Expected request to fail');
-
-        } catch (error) {
-            expect(error.response.status).to.equal(409);
-            expect(error.response.data.error.message)
-                .to.equal('Carrier is inactive');
-        }
+        const { data } = await GET(`${base}/Shipments(101)`, { auth: users.operator });
+        expect(data.carrier_ID).to.equal(1);
     });
 
-
-    //
-    // C6 - REPORT EXCEPTION
-    //
-
-    it('operator should report a shipment exception', async () => {
-        const response = await POST(
-            '/odata/v4/shipment/reportException',
-            {
-                shipmentID: 101,
-                reason: 'Automated test exception'
-            },
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
+    it('inactive carrier is rejected', async () => {
+        await expectFail(
+            call(101, 'assignCarrier', { carrierID: 3 }, users.operator),
+            [409],
+            'Carrier is inactive'
         );
-
-        expect(response.status).to.equal(200);
-
-        const shipment = await GET(
-            '/odata/v4/shipment/Shipments(101)',
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
-        );
-
-        expect(shipment.data.status).to.equal('Exception');
-        expect(shipment.data.exceptionReason)
-            .to.equal('Automated test exception');
     });
 
-
-    //
-    // C8 - OPERATOR CANNOT CLOSE
-    //
-
-    it('operator should not be allowed to close a shipment', async () => {
-        try {
-            await POST(
-                '/odata/v4/shipment/closeShipment',
-                {
-                    shipmentID: 101
-                },
-                {
-                    auth: {
-                        username: 'operator',
-                        password: 'operator123'
-                    }
-                }
-            );
-
-            throw new Error('Expected request to fail');
-
-        } catch (error) {
-            expect(error.response.status).to.equal(403);
-        }
+    it('unknown carrier is rejected', async () => {
+        await expectFail(
+            call(101, 'assignCarrier', { carrierID: 99999 }, users.operator),
+            [404],
+            'Carrier not found'
+        );
     });
 
+    // ---------------- REGION WRITE ----------------
 
-    //
-    // C6 + C8 - MANAGER CLOSES SHIPMENT
-    //
-
-    it('manager should close a shipment', async () => {
-        const response = await POST(
-            '/odata/v4/shipment/closeShipment',
-            {
-                shipmentID: 101
-            },
-            {
-                auth: {
-                    username: 'manager',
-                    password: 'manager123'
-                }
-            }
+    it('IN operator cannot assign carrier to US shipment', async () => {
+        await expectFail(
+            call(102, 'assignCarrier', { carrierID: 1 }, users.operator),
+            [403, 404]
         );
-
-        expect(response.status).to.equal(200);
-
-        const shipment = await GET(
-            '/odata/v4/shipment/Shipments(101)',
-            {
-                auth: {
-                    username: 'manager',
-                    password: 'manager123'
-                }
-            }
-        );
-
-        expect(shipment.data.status).to.equal('Closed');
     });
 
-
-    //
-    // C6 - CLOSED SHIPMENT PROTECTION
-    //
-
-    it('closed shipment should reject carrier assignment', async () => {
-
-        await POST(
-            '/odata/v4/shipment/closeShipment',
-            {
-                shipmentID: 101
-            },
-            {
-                auth: {
-                    username: 'manager',
-                    password: 'manager123'
-                }
-            }
+    it('IN operator cannot report exception on US shipment', async () => {
+        await expectFail(
+            call(102, 'reportException', { reason: 'Cross-region test' }, users.operator),
+            [403, 404]
         );
-
-        try {
-            await POST(
-                '/odata/v4/shipment/assignCarrier',
-                {
-                    shipmentID: 101,
-                    carrierID: 1
-                },
-                {
-                    auth: {
-                        username: 'operator',
-                        password: 'operator123'
-                    }
-                }
-            );
-
-            throw new Error('Expected request to fail');
-
-        } catch (error) {
-            expect(error.response.status).to.equal(409);
-            expect(error.response.data.error.message)
-                .to.equal('Closed shipments cannot be modified');
-        }
     });
 
-
-    //
-    // C6 - REPEATED CLOSE
-    //
-
-    it('closing an already closed shipment should fail', async () => {
-
-        await POST(
-            '/odata/v4/shipment/closeShipment',
-            {
-                shipmentID: 101
-            },
-            {
-                auth: {
-                    username: 'manager',
-                    password: 'manager123'
-                }
-            }
+    it('IN manager cannot close US shipment', async () => {
+        await expectFail(
+            call(102, 'closeShipment', {}, users.manager),
+            [403, 404]
         );
-
-        try {
-            await POST(
-                '/odata/v4/shipment/closeShipment',
-                {
-                    shipmentID: 101
-                },
-                {
-                    auth: {
-                        username: 'manager',
-                        password: 'manager123'
-                    }
-                }
-            );
-
-            throw new Error('Expected request to fail');
-
-        } catch (error) {
-            expect(error.response.status).to.equal(409);
-            expect(error.response.data.error.message)
-                .to.equal('Shipment is already closed');
-        }
     });
-    it('IN operator should not assign carrier to US shipment', async () => {
-    try {
-        await POST(
-            '/odata/v4/shipment/assignCarrier',
-            {
-                shipmentID: 102,
-                carrierID: 1
-            },
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
+
+    // ---------------- REPORT EXCEPTION ----------------
+
+    it('operator reports an exception', async () => {
+        const res = await call(101, 'reportException',
+            { reason: 'Automated test exception' }, users.operator);
+        expect(res.status).to.equal(200);
+
+        const { data } = await GET(`${base}/Shipments(101)`, { auth: users.operator });
+        expect(data.status).to.equal('Exception');
+        expect(data.exceptionReason).to.equal('Automated test exception');
+    });
+
+    it('empty exception reason is rejected', async () => {
+        await expectFail(
+            call(101, 'reportException', { reason: '' }, users.operator),
+            [400]
         );
+    });
 
-        throw new Error('Expected request to fail');
+    // ---------------- CLOSE SHIPMENT ----------------
 
-    } catch (error) {
-        expect(error.response.status).to.equal(403);
-        expect(error.response.data.error.message)
-            .to.equal('You are not authorized to modify this shipment');
-    }
-});
+    it('manager closes a shipment', async () => {
+        const res = await call(101, 'closeShipment', {}, users.manager);
+        expect(res.status).to.equal(200);
 
+        const { data } = await GET(`${base}/Shipments(101)`, { auth: users.manager });
+        expect(data.status).to.equal('Closed');
+    });
 
-it('IN operator should not report exception for US shipment', async () => {
-    try {
-        await POST(
-            '/odata/v4/shipment/reportException',
-            {
-                shipmentID: 102,
-                reason: 'Cross-region test'
-            },
-            {
-                auth: {
-                    username: 'operator',
-                    password: 'operator123'
-                }
-            }
+    it('closed shipment rejects carrier assignment', async () => {
+        await call(101, 'closeShipment', {}, users.manager);
+        await expectFail(
+            call(101, 'assignCarrier', { carrierID: 1 }, users.operator),
+            [409],
+            'Closed shipments cannot be modified'
         );
+    });
 
-        throw new Error('Expected request to fail');
-
-    } catch (error) {
-        expect(error.response.status).to.equal(403);
-        expect(error.response.data.error.message)
-            .to.equal('You are not authorized to modify this shipment');
-    }
-});
-
-
-it('IN manager should not close US shipment', async () => {
-    try {
-        await POST(
-            '/odata/v4/shipment/closeShipment',
-            {
-                shipmentID: 102
-            },
-            {
-                auth: {
-                    username: 'manager',
-                    password: 'manager123'
-                }
-            }
+    it('closing twice fails', async () => {
+        await call(101, 'closeShipment', {}, users.manager);
+        await expectFail(
+            call(101, 'closeShipment', {}, users.manager),
+            [409],
+            'Shipment is already closed'
         );
-
-        throw new Error('Expected request to fail');
-
-    } catch (error) {
-        expect(error.response.status).to.equal(403);
-        expect(error.response.data.error.message)
-            .to.equal('You are not authorized to modify this shipment');
-    }
-});
-
+    });
 });
