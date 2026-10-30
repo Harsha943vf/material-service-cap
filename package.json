@@ -18,11 +18,16 @@
   "cds": {
     "requires": {
       "db": {
-        "kind": "sqlite",
-        "credentials": {
-          "url": "db.sqlite"
-        }
-      },
+  "kind": "sqlite",
+  "credentials": {
+    "url": ":memory:"
+  },
+  "[development]": {
+    "credentials": {
+      "url": "db.sqlite"
+    }
+  }
+},
       "auth": {
         "kind": "mocked",
         "users": {

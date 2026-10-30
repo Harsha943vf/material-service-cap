@@ -1,3 +1,31 @@
+
+### 7. Set Material Quantity - Success (bound)
+POST http://localhost:4004/odata/v4/material/Materials(1001)/MaterialService.setMaterialQuantity
+Content-Type: application/json
+
+{
+  "quantity": 50
+}
+
+
+### 9. Set Material Quantity - Invalid Quantity
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/Materials(1001)/MaterialService.setMaterialQuantity
+Content-Type: application/json
+
+{
+  "quantity": -5
+}
+
+
+### 10. Set Material Quantity - Material Not Found
+# Expected: 404
+POST http://localhost:4004/odata/v4/material/Materials(99999)/MaterialService.setMaterialQuantity
+Content-Type: application/json
+
+{
+  "quantity": 50
+}
 ############################################
 # SHIPMENT SERVICE - REGION READ ACCESS
 ############################################
