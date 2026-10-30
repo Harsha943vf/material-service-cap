@@ -1,4 +1,5 @@
 import cds from '@sap/cds';
+import { checkTransition } from './lib/shipment-state.js';
 
 export default cds.service.impl(function () {
     const { Shipments } = cds.entities('shipment.practice');
@@ -11,10 +12,10 @@ export default cds.service.impl(function () {
     // Reads the bound shipment key from the URL: Shipments(101)/...
     function getShipmentID(req) {
         const param = req.params?.[0];
-        return typeof param === 'object' ? param?.ID : param;
+        const value = typeof param === 'object' ? param?.ID : param;
+        return Number(value);
     }
 
-    // Loads the shipment and applies the shared checks:
     // 400 invalid key, 404 not found, 403 wrong region
     async function loadShipment(req) {
         const shipmentID = getShipmentID(req);
@@ -43,8 +44,29 @@ export default cds.service.impl(function () {
         return shipment;
     }
 
+    // 409 if the state machine does not allow this action
+    function guardTransition(req, action, shipment) {
+        const result = checkTransition(action, shipment.status);
+
+        if (!result.allowed) {
+            req.reject(409, result.message);
+            return null;
+        }
+
+        return result;
+    }
+
+    // Conditional update: only succeeds if status is still unchanged
+    async function updateShipment(shipment, changes) {
+        return cds.db.run(
+            UPDATE(Shipments)
+                .set(changes)
+                .where({ ID: shipment.ID, status: shipment.status })
+        );
+    }
+
     // ---------------------------------------------------------
-    // ASSIGN CARRIER  (bound to Shipments)
+    // ASSIGN CARRIER
     // ---------------------------------------------------------
     this.on('assignCarrier', 'Shipments', async req => {
         const { carrierID } = req.data;
@@ -56,9 +78,8 @@ export default cds.service.impl(function () {
         const shipment = await loadShipment(req);
         if (!shipment) return;
 
-        if (shipment.status === 'Closed') {
-            return req.reject(409, 'Closed shipments cannot be modified');
-        }
+        const transition = guardTransition(req, 'assignCarrier', shipment);
+        if (!transition) return;
 
         const carrierAPI = await cds.connect.to('CarrierAPI');
 
@@ -74,11 +95,10 @@ export default cds.service.impl(function () {
             return req.reject(409, 'Carrier is inactive');
         }
 
-        const affectedRows = await cds.db.run(
-            UPDATE(Shipments)
-                .set({ carrier_ID: carrierID })
-                .where({ ID: shipment.ID, status: shipment.status })
-        );
+        const affectedRows = await updateShipment(shipment, {
+            carrier_ID: carrierID,
+            status: transition.to
+        });
 
         if (affectedRows === 0) {
             return req.reject(409, 'Shipment changed before the Carrier could be assigned');
@@ -88,7 +108,7 @@ export default cds.service.impl(function () {
     });
 
     // ---------------------------------------------------------
-    // REPORT EXCEPTION  (bound to Shipments)
+    // REPORT EXCEPTION
     // ---------------------------------------------------------
     this.on('reportException', 'Shipments', async req => {
         const { reason } = req.data;
@@ -104,15 +124,13 @@ export default cds.service.impl(function () {
         const shipment = await loadShipment(req);
         if (!shipment) return;
 
-        if (shipment.status === 'Closed') {
-            return req.reject(409, 'Closed shipments cannot be modified');
-        }
+        const transition = guardTransition(req, 'reportException', shipment);
+        if (!transition) return;
 
-        const affectedRows = await cds.db.run(
-            UPDATE(Shipments)
-                .set({ status: 'Exception', exceptionReason: reason.trim() })
-                .where({ ID: shipment.ID, status: shipment.status })
-        );
+        const affectedRows = await updateShipment(shipment, {
+            status: transition.to,
+            exceptionReason: reason.trim()
+        });
 
         if (affectedRows === 0) {
             return req.reject(409, 'Shipment changed before the exception could be reported');
@@ -120,23 +138,41 @@ export default cds.service.impl(function () {
 
         return `Exception reported for shipment ${shipment.reference}`;
     });
+        // ---------------------------------------------------------
+    // RESOLVE EXCEPTION  (Exception → Open)
+    // ---------------------------------------------------------
+    this.on('resolveException', 'Shipments', async req => {
+        const shipment = await loadShipment(req);
+        if (!shipment) return;
+
+        const transition = guardTransition(req, 'resolveException', shipment);
+        if (!transition) return;
+
+        const affectedRows = await updateShipment(shipment, {
+            status: transition.to,
+            exceptionReason: null
+        });
+
+        if (affectedRows === 0) {
+            return req.reject(409, 'Shipment changed before the exception could be resolved');
+        }
+
+        return `Exception resolved for shipment ${shipment.reference}`;
+    });
 
     // ---------------------------------------------------------
-    // CLOSE SHIPMENT  (bound to Shipments)
+    // CLOSE SHIPMENT
     // ---------------------------------------------------------
     this.on('closeShipment', 'Shipments', async req => {
         const shipment = await loadShipment(req);
         if (!shipment) return;
 
-        if (shipment.status === 'Closed') {
-            return req.reject(409, 'Shipment is already closed');
-        }
+        const transition = guardTransition(req, 'closeShipment', shipment);
+        if (!transition) return;
 
-        const affectedRows = await cds.db.run(
-            UPDATE(Shipments)
-                .set({ status: 'Closed' })
-                .where({ ID: shipment.ID, status: shipment.status })
-        );
+        const affectedRows = await updateShipment(shipment, {
+            status: transition.to
+        });
 
         if (affectedRows === 0) {
             return req.reject(409, 'Shipment changed before it could be closed');

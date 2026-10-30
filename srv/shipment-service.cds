@@ -9,7 +9,7 @@ service ShipmentService {
             where: 'region = $user.region'
         },
         {
-            grant: ['assignCarrier', 'reportException'],
+            grant: ['assignCarrier', 'reportException', 'resolveException'],
             to: 'ShipmentOperator',
             where: 'region = $user.region'
         },
@@ -28,6 +28,9 @@ service ShipmentService {
             action reportException(
                 reason : String(500)
             ) returns String;
+
+            action resolveException()
+                returns String;
 
             action closeShipment()
                 returns String;
