@@ -304,3 +304,45 @@ Authorization: Basic operator:operator123
 Content-Type: application/json
 
 {}
+
+### 46. Report first exception
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "reason": "Delayed at hub" }
+
+
+### 47. Report second exception
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "reason": "Customs hold" }
+
+
+### 48. Shipment with full exception history
+# Expected: exceptionReason = "Customs hold", exceptions = 2 records
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)?$expand=exceptions
+Authorization: Basic operator:operator123
+
+### 49. Report an exception
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "reason": "Weather delay" }
+
+
+### 50. Resolve it
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.resolveException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{}
+
+
+### 51. History shows the record as resolved
+# Expected: one entry, resolvedAt set, resolvedBy = "operator"
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)?$expand=exceptions
+Authorization: Basic operator:operator123

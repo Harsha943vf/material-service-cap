@@ -2,8 +2,8 @@ import cds from '@sap/cds';
 import { checkTransition } from './lib/shipment-state.js';
 
 export default cds.service.impl(function () {
-    const { Shipments } = cds.entities('shipment.practice');
-    const { SELECT, UPDATE } = cds.ql;
+    const { Shipments, ShipmentExceptions } = cds.entities('shipment.practice');
+    const { SELECT, UPDATE, INSERT } = cds.ql;
 
     // ---------------------------------------------------------
     // HELPERS
@@ -107,8 +107,8 @@ export default cds.service.impl(function () {
         return `Carrier ${carrier.name} assigned to shipment ${shipment.reference}`;
     });
 
-    // ---------------------------------------------------------
-    // REPORT EXCEPTION
+        // ---------------------------------------------------------
+    // REPORT EXCEPTION  (updates status + adds a history record)
     // ---------------------------------------------------------
     this.on('reportException', 'Shipments', async req => {
         const { reason } = req.data;
@@ -136,10 +136,19 @@ export default cds.service.impl(function () {
             return req.reject(409, 'Shipment changed before the exception could be reported');
         }
 
+        // History: one record per reported exception
+        await cds.db.run(
+            INSERT.into(ShipmentExceptions).entries({
+                ID: cds.utils.uuid(),
+                shipment_ID: shipment.ID,
+                reason: reason.trim()
+            })
+        );
+
         return `Exception reported for shipment ${shipment.reference}`;
     });
-        // ---------------------------------------------------------
-    // RESOLVE EXCEPTION  (Exception → Open)
+       // ---------------------------------------------------------
+    // RESOLVE EXCEPTION  (Exception → Open, closes the open history record)
     // ---------------------------------------------------------
     this.on('resolveException', 'Shipments', async req => {
         const shipment = await loadShipment(req);
@@ -157,9 +166,21 @@ export default cds.service.impl(function () {
             return req.reject(409, 'Shipment changed before the exception could be resolved');
         }
 
+        // Close the most recent open history record, if any
+        await cds.db.run(
+            UPDATE(ShipmentExceptions)
+                .set({
+                    resolvedAt: new Date().toISOString(),
+                    resolvedBy: req.user.id
+                })
+                .where({
+                    shipment_ID: shipment.ID,
+                    resolvedAt: null
+                })
+        );
+
         return `Exception resolved for shipment ${shipment.reference}`;
     });
-
     // ---------------------------------------------------------
     // CLOSE SHIPMENT
     // ---------------------------------------------------------

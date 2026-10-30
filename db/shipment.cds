@@ -1,8 +1,7 @@
 namespace shipment.practice;
 
-using { managed } from '@sap/cds/common';
+using { managed, cuid } from '@sap/cds/common';
 
-// Allowed shipment states
 type ShipmentStatus : String(20) enum {
     Open;
     Exception;
@@ -23,5 +22,18 @@ entity Shipments : managed {
 
         region          : String(10);
         carrier         : Association to Carriers;
+
+        // Current/latest reason (kept so E1/E2 tests still work)
         exceptionReason : String(500);
+
+        // Full history: one record per reported exception
+        exceptions      : Composition of many ShipmentExceptions
+                            on exceptions.shipment = $self;
+}
+
+entity ShipmentExceptions : cuid, managed {
+    shipment   : Association to Shipments;
+    reason     : String(500);
+    resolvedAt : Timestamp;
+    resolvedBy : String(255);
 }

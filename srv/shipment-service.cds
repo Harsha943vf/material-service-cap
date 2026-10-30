@@ -37,4 +37,13 @@ service ShipmentService {
         };
 
     entity Carriers as projection on db.Carriers;
+        @readonly
+    @restrict: [
+        {
+            grant: 'READ',
+            to: 'ShipmentViewer',
+            where: 'shipment.region = $user.region'
+        }
+    ]
+    entity ShipmentExceptions as projection on db.ShipmentExceptions;
 }

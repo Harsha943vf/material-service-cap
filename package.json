@@ -11,7 +11,7 @@
   },
   "scripts": {
     "start": "cds-serve",
-     "test": "cds-test"
+      "test": "cds deploy && cds-test"
 
   },
   "private": true,
