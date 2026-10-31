@@ -2,7 +2,7 @@ import cds from '@sap/cds';
 import { checkTransition } from './lib/shipment-state.js';
 
 export default cds.service.impl(function () {
-    const { Shipments, ShipmentExceptions } = cds.entities('shipment.practice');
+    const { Shipments, ShipmentExceptions, AuditLog } = cds.entities('shipment.practice');
     const { SELECT, UPDATE, INSERT } = cds.ql;
 
     // ---------------------------------------------------------
@@ -75,12 +75,35 @@ export default cds.service.impl(function () {
         return result;
     }
 
-    // Conditional update: only succeeds if status is still unchanged
-    async function updateShipment(shipment, changes) {
+    // Conditional update: only succeeds if status is still unchanged.
+    // Writes go through cds.db directly, which bypasses the service-level
+    // generic handlers that normally refresh managed fields. So we refresh
+    // modifiedAt/modifiedBy ourselves here, making modifiedAt a real,
+    // trustworthy version marker for guardVersion() to compare against.
+    async function updateShipment(req, shipment, changes) {
         return cds.db.run(
             UPDATE(Shipments)
-                .set(changes)
+                .set({
+                    ...changes,
+                    modifiedAt: new Date().toISOString(),
+                    modifiedBy: req.user.id
+                })
                 .where({ ID: shipment.ID, status: shipment.status })
+        );
+    }
+
+    // Writes one row to the persisted audit trail for any emitted event
+    async function writeAudit(eventType, data, details) {
+        await cds.db.run(
+            INSERT.into(AuditLog).entries({
+                ID: cds.utils.uuid(),
+                eventType,
+                shipmentID: data.ID,
+                reference: data.reference,
+                details: JSON.stringify(details),
+                occurredAt: new Date().toISOString(),
+                performedBy: details.performedBy
+            })
         );
     }
 
@@ -116,7 +139,7 @@ export default cds.service.impl(function () {
             return req.reject(409, 'Carrier is inactive');
         }
 
-        const affectedRows = await updateShipment(shipment, {
+        const affectedRows = await updateShipment(req, shipment, {
             carrier_ID: carrierID,
             status: transition.to
         });
@@ -124,6 +147,14 @@ export default cds.service.impl(function () {
         if (affectedRows === 0) {
             return req.reject(409, 'Shipment changed before the Carrier could be assigned');
         }
+
+        this.emit('CarrierAssigned', {
+            ID: shipment.ID,
+            reference: shipment.reference,
+            carrierID: carrierID,
+            carrierName: carrier.name,
+            assignedBy: req.user.id
+        });
 
         return `Carrier ${carrier.name} assigned to shipment ${shipment.reference}`;
     });
@@ -150,7 +181,7 @@ export default cds.service.impl(function () {
         const transition = guardTransition(req, 'reportException', shipment);
         if (!transition) return;
 
-        const affectedRows = await updateShipment(shipment, {
+        const affectedRows = await updateShipment(req, shipment, {
             status: transition.to,
             exceptionReason: reason.trim()
         });
@@ -168,6 +199,13 @@ export default cds.service.impl(function () {
             })
         );
 
+        this.emit('ExceptionReported', {
+            ID: shipment.ID,
+            reference: shipment.reference,
+            reason: reason.trim(),
+            reportedBy: req.user.id
+        });
+
         return `Exception reported for shipment ${shipment.reference}`;
     });
 
@@ -183,7 +221,7 @@ export default cds.service.impl(function () {
         const transition = guardTransition(req, 'resolveException', shipment);
         if (!transition) return;
 
-        const affectedRows = await updateShipment(shipment, {
+        const affectedRows = await updateShipment(req, shipment, {
             status: transition.to,
             exceptionReason: null
         });
@@ -205,6 +243,12 @@ export default cds.service.impl(function () {
                 })
         );
 
+        this.emit('ExceptionResolved', {
+            ID: shipment.ID,
+            reference: shipment.reference,
+            resolvedBy: req.user.id
+        });
+
         return `Exception resolved for shipment ${shipment.reference}`;
     });
 
@@ -220,7 +264,7 @@ export default cds.service.impl(function () {
         const transition = guardTransition(req, 'closeShipment', shipment);
         if (!transition) return;
 
-        const affectedRows = await updateShipment(shipment, {
+        const affectedRows = await updateShipment(req, shipment, {
             status: transition.to
         });
 
@@ -228,6 +272,44 @@ export default cds.service.impl(function () {
             return req.reject(409, 'Shipment changed before it could be closed');
         }
 
+        this.emit('ShipmentClosed', {
+            ID: shipment.ID,
+            reference: shipment.reference,
+            region: shipment.region,
+            closedBy: req.user.id
+        });
+
         return `Shipment ${shipment.reference} closed successfully`;
+    });
+
+    // ---------------------------------------------------------
+    // EVENT LISTENERS (persisted audit trail)
+    // ---------------------------------------------------------
+    this.on('ShipmentClosed', async msg => {
+        await writeAudit('ShipmentClosed', msg.data, {
+            region: msg.data.region,
+            performedBy: msg.data.closedBy
+        });
+    });
+
+    this.on('ExceptionReported', async msg => {
+        await writeAudit('ExceptionReported', msg.data, {
+            reason: msg.data.reason,
+            performedBy: msg.data.reportedBy
+        });
+    });
+
+    this.on('ExceptionResolved', async msg => {
+        await writeAudit('ExceptionResolved', msg.data, {
+            performedBy: msg.data.resolvedBy
+        });
+    });
+
+    this.on('CarrierAssigned', async msg => {
+        await writeAudit('CarrierAssigned', msg.data, {
+            carrierID: msg.data.carrierID,
+            carrierName: msg.data.carrierName,
+            performedBy: msg.data.assignedBy
+        });
     });
 });

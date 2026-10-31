@@ -52,6 +52,12 @@ service ShipmentService {
     ]
     entity ShipmentExceptions as projection on db.ShipmentExceptions;
 
+    @readonly
+    @restrict: [
+        { grant: 'READ', to: 'ShipmentManager' }
+    ]
+    entity AuditLog as projection on db.AuditLog;
+
     event ShipmentClosed : {
         ID        : Integer;
         reference : String(50);
@@ -77,5 +83,6 @@ service ShipmentService {
         reference   : String(50);
         carrierID   : Integer;
         carrierName : String(100);
+        assignedBy  : String(255);
     }
 }

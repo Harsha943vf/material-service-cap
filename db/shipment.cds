@@ -35,3 +35,12 @@ entity ShipmentExceptions : cuid, managed {
     resolvedAt : Timestamp;
     resolvedBy : String(255);
 }
+
+entity AuditLog : cuid {
+    eventType   : String(50);
+    shipmentID  : Integer;
+    reference   : String(50);
+    details     : String(1000);
+    occurredAt  : Timestamp;
+    performedBy : String(255);
+}

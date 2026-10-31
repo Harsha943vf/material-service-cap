@@ -395,3 +395,107 @@ Content-Type: application/json
 ###
 GET http://localhost:4004/odata/v4/shipment/Shipments(101)
 Authorization: Basic manager:manager123
+
+
+### E5.2 check 1 - triggers CarrierAssigned
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
+
+
+### E5.2 check 2 - triggers ExceptionReported
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "reason": "Testing event emission" }
+
+
+### E5.2 check 3 - triggers ExceptionResolved
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.resolveException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{}
+
+
+### E5.2 check 4 - triggers ShipmentClosed
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{}
+
+### Trigger an event
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
+
+
+### Read the audit log (manager only)
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic manager:manager123
+
+
+### Confirm non-managers are blocked
+# Expected: 403
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic operator:operator123
+
+
+############################################
+# E5 - EVENTS / AUDIT LOG
+############################################
+
+### 57. Trigger CarrierAssigned
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
+
+
+### 58. Trigger ExceptionReported
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "reason": "Audit trail test" }
+
+
+### 59. Trigger ExceptionResolved
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.resolveException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{}
+
+
+### 60. Trigger ShipmentClosed
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{}
+
+
+### 61. Manager reads full audit log
+# Expected: 4 entries - CarrierAssigned, ExceptionReported, ExceptionResolved, ShipmentClosed
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic manager:manager123
+
+
+### 62. Operator cannot read audit log
+# Expected: 403
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic operator:operator123
+
+
+### 63. Viewer cannot read audit log
+# Expected: 403
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic viewer:viewer123
