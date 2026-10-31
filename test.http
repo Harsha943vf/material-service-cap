@@ -649,3 +649,6 @@ POST http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=fa
 Content-Type: application/json
 
 {}
+
+### 6. Confirm it now exists as a real, active Material with quantity 99
+GET http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=true)
