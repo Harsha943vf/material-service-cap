@@ -506,3 +506,10 @@ Authorization: Basic operator:operator123
 Content-Type: application/json
 
 { "carrierID": 3 }
+
+###
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
