@@ -128,8 +128,6 @@ export default cds.service.impl(function () {
             return req.reject(400, 'Carrier ID must be an integer');
         }
 
-        // TEMPORARY TEST SWITCH for E7.2 — remove after verifying
-        
         const shipment = await loadShipment(req);
         if (!shipment) return;
 

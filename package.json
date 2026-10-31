@@ -27,10 +27,7 @@
           }
         }
       },
-      "CarrierAPI": {
-        "kind": "odata",
-        "model": "srv/carrier-api"
-      },
+      
       "auth": {
         "kind": "mocked",
         "users": {

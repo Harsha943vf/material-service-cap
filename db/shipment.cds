@@ -15,6 +15,8 @@ entity Carriers {
 
 entity Shipments : managed {
     key ID              : Integer;
+
+        @mandatory
         reference       : String(50);
 
         @assert.range

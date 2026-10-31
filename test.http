@@ -568,3 +568,10 @@ Content-Type: application/json
   "plant": "1000",
   "quantity": 25
 }
+
+### Diagnostic check - should show the real error message
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
