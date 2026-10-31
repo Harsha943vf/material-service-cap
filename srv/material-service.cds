@@ -2,6 +2,7 @@ using { material.service as db } from '../db/schema';
 
 service MaterialService {
 
+    @odata.draft.enabled
     entity Materials as projection on db.Materials
         actions {
             action setMaterialQuantity(

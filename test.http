@@ -575,3 +575,42 @@ Authorization: Basic operator:operator123
 Content-Type: application/json
 
 { "carrierID": 1 }
+
+
+### E8.3 check 1 - reject non-numeric plant
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1020,
+  "name": "Bad Plant Test",
+  "plant": "ABCD",
+  "quantity": 10
+}
+
+
+### E8.3 check 2 - reject wrong-length plant
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1021,
+  "name": "Short Plant Test",
+  "plant": "100",
+  "quantity": 10
+}
+
+
+### E8.3 check 3 - valid plant still succeeds
+# Expected: 201 or 200
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1022,
+  "name": "Good Plant Test",
+  "plant": "3000",
+  "quantity": 10
+}
