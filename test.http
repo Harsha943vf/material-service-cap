@@ -614,3 +614,38 @@ Content-Type: application/json
   "plant": "3000",
   "quantity": 10
 }
+
+### E9.1 check - confirm draft mode is active in metadata
+GET http://localhost:4004/odata/v4/material/$metadata
+
+### 1. Create a new Material as a draft
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1030,
+  "name": "Draft Test Item",
+  "plant": "4000",
+  "quantity": 15
+}
+
+### 2. Confirm the draft is NOT visible as an active record
+# Expected: 404 (or empty result) — active Materials shouldn't show it yet
+GET http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=true)
+
+### 3. Read the draft itself (note IsActiveEntity=false in the URL)
+GET http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=false)
+
+### 4. Edit the draft - change the quantity before publishing
+PATCH http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=false)
+Content-Type: application/json
+
+{
+  "quantity": 99
+}
+
+### 5. Activate the draft - publishes it as the real record
+POST http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=false)/MaterialService.draftActivate
+Content-Type: application/json
+
+{}
