@@ -11,23 +11,26 @@
   },
   "scripts": {
     "start": "cds-serve",
-      "test": "cds deploy && cds-test"
-
+    "test": "cds deploy && cds-test"
   },
   "private": true,
   "cds": {
     "requires": {
       "db": {
-  "kind": "sqlite",
-  "credentials": {
-    "url": ":memory:"
-  },
-  "[development]": {
-    "credentials": {
-      "url": "db.sqlite"
-    }
-  }
-},
+        "kind": "sqlite",
+        "credentials": {
+          "url": ":memory:"
+        },
+        "[development]": {
+          "credentials": {
+            "url": "db.sqlite"
+          }
+        }
+      },
+      "CarrierAPI": {
+        "kind": "odata",
+        "model": "srv/carrier-api"
+      },
       "auth": {
         "kind": "mocked",
         "users": {
