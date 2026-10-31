@@ -16,6 +16,8 @@ entity Materials : managed {
     key ID       : Integer;
         name     : String(100);
         plant    : String(4);
+
+        @assert.range: [1, 999999]
         quantity : Integer;
 
         supplier : Association to Suppliers;

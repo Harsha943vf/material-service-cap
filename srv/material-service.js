@@ -2,22 +2,22 @@ import cds from '@sap/cds';
 
 export default cds.service.impl(function () {
 
-    this.before(['CREATE', 'UPDATE'], 'Materials', req => {
-        console.log('Quantity validation:', req.event, req.data);
+   this.before(['CREATE', 'UPDATE'], 'Materials', req => {
+    console.log('Quantity validation:', req.event, req.data);
 
-        const { quantity } = req.data;
+    const { quantity } = req.data;
 
-        if (req.event === 'UPDATE' && quantity === undefined) {
-            return;
-        }
+    if (req.event === 'UPDATE' && quantity === undefined) {
+        return;
+    }
 
-        if (!Number.isInteger(quantity) || quantity <= 0) {
-            return req.reject(
-                400,
-                'Quantity must be a positive integer'
-            );
-        }
-    });
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+        return req.reject(
+            400,
+            'Quantity must be a positive integer'
+        );
+    }
+});
 
     this.after('CREATE', 'Materials', material => {
         console.log(

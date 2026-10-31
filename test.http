@@ -513,3 +513,58 @@ Authorization: Basic operator:operator123
 Content-Type: application/json
 
 { "carrierID": 1 }
+
+
+### E7.2 - trigger the simulated CarrierAPI failure
+# Expected: 503
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": -999 }
+
+
+### Re-verify normal paths still work
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{ "carrierID": 1 }
+
+### E8.1 check 1 - reject zero quantity declaratively
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1010,
+  "name": "Test Item",
+  "plant": "1000",
+  "quantity": 0
+}
+
+
+### E8.1 check 2 - reject negative quantity declaratively
+# Expected: 400
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1011,
+  "name": "Test Item 2",
+  "plant": "1000",
+  "quantity": -5
+}
+
+
+### E8.1 check 3 - valid quantity still succeeds
+# Expected: 201 (or 200, depending on CAP version)
+POST http://localhost:4004/odata/v4/material/Materials
+Content-Type: application/json
+
+{
+  "ID": 1012,
+  "name": "Test Item 3",
+  "plant": "1000",
+  "quantity": 25
+}
