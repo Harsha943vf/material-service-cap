@@ -346,3 +346,52 @@ Content-Type: application/json
 # Expected: one entry, resolvedAt set, resolvedBy = "operator"
 GET http://localhost:4004/odata/v4/shipment/Shipments(101)?$expand=exceptions
 Authorization: Basic operator:operator123
+
+
+############################################
+# E4 - VERSION CONCURRENCY (expectedModifiedAt)
+############################################
+
+### 52. Read shipment 101, capture modifiedAt
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic manager:manager123
+
+
+### 53. Close with correct expectedModifiedAt (copy modifiedAt from request 52)
+# Expected: 200
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "expectedModifiedAt": "2026-10-31T10:18:05.804Z"
+}
+
+
+### 54. Try closing again with the SAME (now stale) expectedModifiedAt
+# Expected: 412 - Shipment was changed by someone else; reload and try again
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{
+  "expectedModifiedAt": "PASTE-SAME-modifiedAt-FROM-REQUEST-52-HERE"
+}
+
+
+### 55. Action without expectedModifiedAt still works (backward compatible)
+# Run this on a fresh shipment, so reset first: npx cds deploy, restart cds watch
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic manager:manager123
+
+
+### 56. Close without sending expectedModifiedAt at all
+# Expected: 200
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Authorization: Basic manager:manager123
+Content-Type: application/json
+
+{}
+###
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic manager:manager123

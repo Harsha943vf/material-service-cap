@@ -44,6 +44,25 @@ export default cds.service.impl(function () {
         return shipment;
     }
 
+    // 412 if the caller's expected version doesn't match the current one.
+    // If the caller doesn't send expectedModifiedAt, the check is skipped
+    // (keeps E1-E3 behavior and tests working unchanged).
+    function guardVersion(req, shipment) {
+        const expected = req.data.expectedModifiedAt;
+
+        if (expected == null) return true;
+
+        const current = new Date(shipment.modifiedAt).toISOString();
+        const supplied = new Date(expected).toISOString();
+
+        if (current !== supplied) {
+            req.reject(412, 'Shipment was changed by someone else; reload and try again');
+            return false;
+        }
+
+        return true;
+    }
+
     // 409 if the state machine does not allow this action
     function guardTransition(req, action, shipment) {
         const result = checkTransition(action, shipment.status);
@@ -78,6 +97,8 @@ export default cds.service.impl(function () {
         const shipment = await loadShipment(req);
         if (!shipment) return;
 
+        if (!guardVersion(req, shipment)) return;
+
         const transition = guardTransition(req, 'assignCarrier', shipment);
         if (!transition) return;
 
@@ -107,7 +128,7 @@ export default cds.service.impl(function () {
         return `Carrier ${carrier.name} assigned to shipment ${shipment.reference}`;
     });
 
-        // ---------------------------------------------------------
+    // ---------------------------------------------------------
     // REPORT EXCEPTION  (updates status + adds a history record)
     // ---------------------------------------------------------
     this.on('reportException', 'Shipments', async req => {
@@ -123,6 +144,8 @@ export default cds.service.impl(function () {
 
         const shipment = await loadShipment(req);
         if (!shipment) return;
+
+        if (!guardVersion(req, shipment)) return;
 
         const transition = guardTransition(req, 'reportException', shipment);
         if (!transition) return;
@@ -147,12 +170,15 @@ export default cds.service.impl(function () {
 
         return `Exception reported for shipment ${shipment.reference}`;
     });
-       // ---------------------------------------------------------
+
+    // ---------------------------------------------------------
     // RESOLVE EXCEPTION  (Exception → Open, closes the open history record)
     // ---------------------------------------------------------
     this.on('resolveException', 'Shipments', async req => {
         const shipment = await loadShipment(req);
         if (!shipment) return;
+
+        if (!guardVersion(req, shipment)) return;
 
         const transition = guardTransition(req, 'resolveException', shipment);
         if (!transition) return;
@@ -181,12 +207,15 @@ export default cds.service.impl(function () {
 
         return `Exception resolved for shipment ${shipment.reference}`;
     });
+
     // ---------------------------------------------------------
     // CLOSE SHIPMENT
     // ---------------------------------------------------------
     this.on('closeShipment', 'Shipments', async req => {
         const shipment = await loadShipment(req);
         if (!shipment) return;
+
+        if (!guardVersion(req, shipment)) return;
 
         const transition = guardTransition(req, 'closeShipment', shipment);
         if (!transition) return;

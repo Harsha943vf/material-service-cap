@@ -22,14 +22,12 @@ entity Shipments : managed {
 
         region          : String(10);
         carrier         : Association to Carriers;
-
-        // Current/latest reason (kept so E1/E2 tests still work)
         exceptionReason : String(500);
-
-        // Full history: one record per reported exception
         exceptions      : Composition of many ShipmentExceptions
                             on exceptions.shipment = $self;
 }
+
+annotate Shipments with @odata.etag: modifiedAt;
 
 entity ShipmentExceptions : cuid, managed {
     shipment   : Association to Shipments;
