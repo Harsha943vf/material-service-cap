@@ -15,7 +15,11 @@ entity Suppliers {
 entity Materials : managed {
     key ID       : Integer;
         name     : String(100);
+
+        @assert.format: '^\d{4}$'
         plant    : String(4);
+
+        @assert.range: [1, 999999]
         quantity : Integer;
 
         supplier : Association to Suppliers;

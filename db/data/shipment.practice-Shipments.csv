@@ -1,3 +1,9 @@
 ID,reference,status,region
 101,SHP-101,Open,IN
 102,SHP-102,Open,US
+103,SHP-103,Exception,IN
+104,SHP-104,Closed,IN
+105,SHP-105,Open,US
+106,SHP-106,Exception,US
+107,SHP-107,Closed,US
+108,SHP-108,Open,IN

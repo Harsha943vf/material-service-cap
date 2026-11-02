@@ -10,7 +10,8 @@
     "@cap-js/sqlite": "^3"
   },
   "scripts": {
-    "start": "cds-serve"
+    "start": "cds-serve",
+    "test": "cds deploy && cds-test"
   },
   "private": true,
   "cds": {
@@ -18,9 +19,15 @@
       "db": {
         "kind": "sqlite",
         "credentials": {
-          "url": "db.sqlite"
+          "url": ":memory:"
+        },
+        "[development]": {
+          "credentials": {
+            "url": "db.sqlite"
+          }
         }
       },
+      
       "auth": {
         "kind": "mocked",
         "users": {

@@ -2,22 +2,22 @@ import cds from '@sap/cds';
 
 export default cds.service.impl(function () {
 
-    this.before(['CREATE', 'UPDATE'], 'Materials', req => {
-        console.log('Quantity validation:', req.event, req.data);
+   this.before(['CREATE', 'UPDATE'], 'Materials', req => {
+    console.log('Quantity validation:', req.event, req.data);
 
-        const { quantity } = req.data;
+    const { quantity } = req.data;
 
-        if (req.event === 'UPDATE' && quantity === undefined) {
-            return;
-        }
+    if (req.event === 'UPDATE' && quantity === undefined) {
+        return;
+    }
 
-        if (!Number.isInteger(quantity) || quantity <= 0) {
-            return req.reject(
-                400,
-                'Quantity must be a positive integer'
-            );
-        }
-    });
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+        return req.reject(
+            400,
+            'Quantity must be a positive integer'
+        );
+    }
+});
 
     this.after('CREATE', 'Materials', material => {
         console.log(
@@ -88,18 +88,17 @@ this.on('checkQuantity', req => {
     return 'Quantity is valid';
 });
 
-this.on('setMaterialQuantity', async req => {
-    const { materialID, quantity } = req.data;
+this.on('setMaterialQuantity', 'Materials', async req => {
+    const param = req.params?.[0];
+    const materialID = Number(typeof param === 'object' ? param?.ID : param);
+    const { quantity } = req.data;
 
-    if (materialID == null) {
-        return req.reject(400, 'Material ID is required');
+    if (!Number.isInteger(materialID)) {
+        return req.reject(400, 'Material ID must be an integer');
     }
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
-        return req.reject(
-            400,
-            'Quantity must be a positive integer'
-        );
+        return req.reject(400, 'Quantity must be a positive integer');
     }
 
     const { Materials } = cds.entities('material.service');
