@@ -8,12 +8,7 @@ annotate ShipmentService.Shipments with @(
         Description: { Value: status }
     },
 
-    UI.LineItem: [
-        { Value: reference },
-        { Value: status },
-        { Value: region },
-        { Value: carrier.name, Label: 'Carrier' },
-
+    UI.Identification: [
         {
             $Type  : 'UI.DataFieldForAction',
             Action : 'ShipmentService.assignCarrier',
@@ -34,6 +29,13 @@ annotate ShipmentService.Shipments with @(
             Action : 'ShipmentService.closeShipment',
             Label  : 'Close Shipment'
         }
+    ],
+
+    UI.LineItem: [
+        { Value: reference },
+        { Value: status },
+        { Value: region },
+        { Value: carrier.name, Label: 'Carrier' }
     ],
 
     UI.Facets: [
