@@ -52,7 +52,22 @@ export default function (test) {
             expect(checkTransition('deleteShipment', Status.Open).allowed).to.equal(false);
         });
     });
+        describe('Data-driven: invalid transitions', () => {
+        const cases = [
+            { action: 'assignCarrier',    status: 'Closed', expectedMessage: 'Closed shipments cannot be modified' },
+            { action: 'reportException',  status: 'Closed', expectedMessage: 'Closed shipments cannot be modified' },
+            { action: 'resolveException', status: 'Open',   expectedMessage: 'Only shipments in Exception status can be resolved' },
+            { action: 'closeShipment',    status: 'Closed', expectedMessage: 'Shipment is already closed' }
+        ];
 
+        for (const { action, status, expectedMessage } of cases) {
+            it(`${action} from ${status} correctly rejects with the right message`, () => {
+                const result = checkTransition(action, status);
+                expect(result.allowed).to.equal(false);
+                expect(result.message).to.equal(expectedMessage);
+            });
+        }
+    });
     // ---------------- INTEGRATION: lifecycle via HTTP ----------------
     describe('Shipment lifecycle (E2)', () => {
 

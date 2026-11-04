@@ -657,3 +657,45 @@ GET http://localhost:4004/odata/v4/material/Materials(ID=1030,IsActiveEntity=tru
 
 GET http://localhost:4004/odata/v4/shipment/Shipments(101)
 Authorization: Basic operator:operator123
+
+### Step 1 - read current modifiedAt
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+Authorization: Basic operator:operator123
+
+### Step 2 - immediately try the action with that exact value
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Authorization: Basic operator:operator123
+Content-Type: application/json
+
+{
+  "reason": "Diagnostic test",
+  "expectedModifiedAt": "2026-11-03T09:03:42.160Z"
+}
+
+
+### Should still succeed (no version sent)
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.assignCarrier
+Content-Type: application/json
+
+{ "carrierID": 1 }
+
+### Should still succeed (no version sent)
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.closeShipment
+Content-Type: application/json
+
+{}
+
+### Step 1 - read current modifiedAt
+GET http://localhost:4004/odata/v4/shipment/Shipments(101)
+
+### Step 2 - use that value, should succeed
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Content-Type: application/json
+
+{ "reason": "Test", "expectedModifiedAt": "2026-11-04T05:37:46.843Z" } 
+
+### Step 3 - reuse the SAME now-stale value again
+POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.reportException
+Content-Type: application/json
+
+{ "reason": "Test again", "expectedModifiedAt": "2026-11-04T05:37:46.843Z" }

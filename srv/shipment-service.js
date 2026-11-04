@@ -178,7 +178,80 @@ export default cds.service.impl(function () {
 
         return `Carrier ${carrier.name} assigned to shipment ${shipment.reference}`;
     });
+        // ---------------------------------------------------------
+    // STATUS SUMMARY (demonstrates server-side paging through a large dataset)
+    // ---------------------------------------------------------
+    this.on('getStatusSummary', async req => {
+        const counts = { open: 0, exception: 0, closed: 0 };
 
+        const pageSize = 2; // deliberately small, to force multiple pages even with 8 seed rows
+        let skip = 0;
+
+        while (true) {
+            const page = await cds.db.run(
+                SELECT.from(Shipments)
+                    .columns('status')
+                    .limit(pageSize, skip)
+            );
+
+            if (page.length === 0) break;
+
+            for (const row of page) {
+                if (row.status === 'Open') counts.open++;
+                else if (row.status === 'Exception') counts.exception++;
+                else if (row.status === 'Closed') counts.closed++;
+            }
+
+            skip += pageSize;
+        }
+
+        return counts;
+    });
+        // ---------------------------------------------------------
+    // UPDATE REFERENCE  (safe, action-based inline edit)
+    // ---------------------------------------------------------
+    this.on('updateReference', 'Shipments', async req => {
+        const { reference } = req.data;
+
+        if (
+            typeof reference !== 'string' ||
+            reference.trim().length === 0 ||
+            reference.trim().length > 50
+        ) {
+            return req.reject(400, 'Reference must be 1 to 50 characters');
+        }
+
+        const shipment = await loadShipment(req);
+        if (!shipment) return;
+
+        if (!guardVersion(req, shipment)) return;
+
+        const affectedRows = await updateShipment(req, shipment, {
+            reference: reference.trim()
+        });
+
+        if (affectedRows === 0) {
+            return req.reject(409, 'Shipment changed before the reference could be updated');
+        }
+
+        return `Shipment reference updated to ${reference.trim()}`;
+    });
+        // ---------------------------------------------------------
+    // COMPUTED FIELD: daysOpen
+    // ---------------------------------------------------------
+    this.after('READ', 'Shipments', shipments => {
+        const list = Array.isArray(shipments) ? shipments : [shipments];
+
+        for (const shipment of list) {
+            if (!shipment || !shipment.createdAt) continue;
+
+            const createdDate = new Date(shipment.createdAt);
+            const now = new Date();
+            const msPerDay = 1000 * 60 * 60 * 24;
+
+            shipment.daysOpen = Math.floor((now - createdDate) / msPerDay);
+        }
+    });
     // ---------------------------------------------------------
     // REPORT EXCEPTION  (updates status + adds a history record)
     // ---------------------------------------------------------
@@ -332,4 +405,5 @@ export default cds.service.impl(function () {
             performedBy: msg.data.assignedBy
         });
     });
+    
 });

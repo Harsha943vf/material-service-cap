@@ -10,9 +10,9 @@
     "@cap-js/sqlite": "^3"
   },
   "scripts": {
-    "start": "cds-serve",
-    "test": "cds deploy && cds-test"
-  },
+  "start": "cds-serve",
+  "test": "cds deploy && node --test --test-reporter=spec test/app.test.js"
+},
   "private": true,
   "cds": {
     "requires": {
@@ -26,53 +26,23 @@
             "url": "db.sqlite"
           }
         }
+        
       },
+      "queue": {
+    "kind": "persistent-outbox"
+},
       
-      "auth": {
-        "kind": "mocked",
-        "users": {
-          "viewer": {
-            "password": "viewer123",
-            "roles": [
-              "ShipmentViewer"
-            ],
-            "attr": {
-              "region": "IN"
-            }
-          },
-          "us.viewer": {
-            "password": "us123",
-            "roles": [
-              "ShipmentViewer"
-            ],
-            "attr": {
-              "region": "US"
-            }
-          },
-          "operator": {
-            "password": "operator123",
-            "roles": [
-              "ShipmentViewer",
-              "ShipmentOperator"
-            ],
-            "attr": {
-              "region": "IN"
-            }
-          },
-          "manager": {
-            "password": "manager123",
-            "roles": [
-              "ShipmentViewer",
-              "ShipmentOperator",
-              "ShipmentManager"
-            ],
-            "attr": {
-              "region": "IN"
-            }
-          },
-          "*": false
-        }
-      }
+     "auth": {
+    "kind": "mocked",
+    "users": {
+        "viewer": { "password": "viewer123", "roles": ["ShipmentViewer"], "attr": { "region": "IN" } },
+        "us.viewer": { "password": "us123", "roles": ["ShipmentViewer"], "attr": { "region": "US" } },
+        "operator": { "password": "operator123", "roles": ["ShipmentViewer", "ShipmentOperator"], "attr": { "region": "IN" } },
+        "manager": { "password": "manager123", "roles": ["ShipmentViewer", "ShipmentOperator", "ShipmentManager"], "attr": { "region": "IN" } },
+        "*": false
+    }
+}
     }
   }
+  
 }

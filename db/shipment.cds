@@ -15,8 +15,6 @@ entity Carriers {
 
 entity Shipments : managed {
     key ID              : Integer;
-
-        @mandatory
         reference       : String(50);
 
         @assert.range
@@ -27,6 +25,8 @@ entity Shipments : managed {
         exceptionReason : String(500);
         exceptions      : Composition of many ShipmentExceptions
                             on exceptions.shipment = $self;
+
+        virtual daysOpen : Integer;
 }
 
 annotate Shipments with @odata.etag: modifiedAt;

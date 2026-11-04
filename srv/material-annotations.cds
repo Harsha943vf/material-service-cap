@@ -1,5 +1,7 @@
 using { MaterialService } from './material-service';
-
+annotate MaterialService.Suppliers with @(
+    Common.Text: { $value: name, ![@UI.TextArrangement]: #TextOnly }
+);
 annotate MaterialService.Materials with @(
     UI.HeaderInfo: {
         TypeName: 'Material',
@@ -44,4 +46,21 @@ annotate MaterialService.Inspections with @(
         { Value: ID },
         { Value: result }
     ]
+);
+annotate MaterialService.Suppliers with @(
+    UI.HeaderInfo: {
+        TypeName: 'Supplier',
+        TypeNamePlural: 'Suppliers',
+        Title: { Value: name }
+    },
+    UI.LineItem: [
+        { Value: ID },
+        { Value: name }
+    ],
+    UI.Facets: [
+        { $Type: 'UI.ReferenceFacet', Label: 'Supplier Details', Target: '@UI.FieldGroup#Main' }
+    ],
+    UI.FieldGroup#Main: {
+        Data: [ { Value: name } ]
+    }
 );

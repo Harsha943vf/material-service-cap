@@ -40,19 +40,23 @@ export default function (test) {
 
         // ---------------- REGION READ ----------------
 
-        it('IN viewer sees only IN shipment', async () => {
-            const { status, data } = await GET(`${base}/Shipments`, { auth: users.viewer });
-            expect(status).to.equal(200);
-            expect(data.value).to.have.length(1);
-            expect(data.value[0]).to.include({ ID: 101, region: 'IN' });
-        });
+        it('IN viewer sees only IN shipments', async () => {
+    const { status, data } = await GET(`${base}/Shipments`, { auth: users.viewer });
+    expect(status).to.equal(200);
+    expect(data.value).to.have.length(4);
+    for (const shipment of data.value) {
+        expect(shipment.region).to.equal('IN');
+    }
+});
 
-        it('US viewer sees only US shipment', async () => {
-            const { status, data } = await GET(`${base}/Shipments`, { auth: users.usViewer });
-            expect(status).to.equal(200);
-            expect(data.value).to.have.length(1);
-            expect(data.value[0]).to.include({ ID: 102, region: 'US' });
-        });
+it('US viewer sees only US shipments', async () => {
+    const { status, data } = await GET(`${base}/Shipments`, { auth: users.usViewer });
+    expect(status).to.equal(200);
+    expect(data.value).to.have.length(4);
+    for (const shipment of data.value) {
+        expect(shipment.region).to.equal('US');
+    }
+});
 
         // ---------------- ROLE AUTHORIZATION ----------------
 
