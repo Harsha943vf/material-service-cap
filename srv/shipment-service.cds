@@ -1,7 +1,7 @@
 using { shipment.practice as db } from '../db/shipment';
 
 service ShipmentService {
-
+   
     @restrict: [
         {
             grant: 'READ',
@@ -38,10 +38,15 @@ service ShipmentService {
             action closeShipment(
                 expectedModifiedAt : Timestamp
             ) returns String;
+
+            action updateReference(
+                reference : String(50),
+                expectedModifiedAt : Timestamp
+            ) returns String;
         };
 
     entity Carriers as projection on db.Carriers;
-
+    /*
     @readonly
     @restrict: [
         {
@@ -49,13 +54,15 @@ service ShipmentService {
             to: 'ShipmentViewer',
             where: 'shipment.region = $user.region'
         }
-    ]
+    ]*/
+    @readonly
     entity ShipmentExceptions as projection on db.ShipmentExceptions;
-
+    /*
     @readonly
     @restrict: [
         { grant: 'READ', to: 'ShipmentManager' }
-    ]
+    ]*/
+    @readonly
     entity AuditLog as projection on db.AuditLog;
 
     event ShipmentClosed : {
@@ -85,4 +92,9 @@ service ShipmentService {
         carrierName : String(100);
         assignedBy  : String(255);
     }
+    function getStatusSummary() returns {
+    open      : Integer;
+    exception : Integer;
+    closed    : Integer;
+};
 }
