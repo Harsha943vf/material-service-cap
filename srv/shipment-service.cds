@@ -1,7 +1,7 @@
 using { shipment.practice as db } from '../db/shipment';
 
 service ShipmentService {
-   
+
     @restrict: [
         {
             grant: 'READ',
@@ -9,7 +9,7 @@ service ShipmentService {
             where: 'region = $user.region'
         },
         {
-            grant: ['assignCarrier', 'reportException', 'resolveException'],
+            grant: ['assignCarrier', 'reportException', 'resolveException', 'updateReference'],
             to: 'ShipmentOperator',
             where: 'region = $user.region'
         },
@@ -17,6 +17,10 @@ service ShipmentService {
             grant: 'closeShipment',
             to: 'ShipmentManager',
             where: 'region = $user.region'
+        },
+        {
+            grant: '*',
+            to: 'ShipmentAdmin'
         }
     ]
     entity Shipments as projection on db.Shipments
@@ -46,23 +50,26 @@ service ShipmentService {
         };
 
     entity Carriers as projection on db.Carriers;
-    /*
+
     @readonly
     @restrict: [
         {
             grant: 'READ',
             to: 'ShipmentViewer',
             where: 'shipment.region = $user.region'
+        },
+        {
+            grant: 'READ',
+            to: 'ShipmentAdmin'
         }
-    ]*/
-    @readonly
+    ]
     entity ShipmentExceptions as projection on db.ShipmentExceptions;
-    /*
+
     @readonly
     @restrict: [
-        { grant: 'READ', to: 'ShipmentManager' }
-    ]*/
-    @readonly
+        { grant: 'READ', to: 'ShipmentManager' },
+        { grant: 'READ', to: 'ShipmentAdmin' }
+    ]
     entity AuditLog as projection on db.AuditLog;
 
     event ShipmentClosed : {
@@ -92,9 +99,10 @@ service ShipmentService {
         carrierName : String(100);
         assignedBy  : String(255);
     }
+
     function getStatusSummary() returns {
-    open      : Integer;
-    exception : Integer;
-    closed    : Integer;
-};
+        open      : Integer;
+        exception : Integer;
+        closed    : Integer;
+    };
 }

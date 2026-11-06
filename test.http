@@ -699,3 +699,12 @@ POST http://localhost:4004/odata/v4/shipment/Shipments(101)/ShipmentService.repo
 Content-Type: application/json
 
 { "reason": "Test again", "expectedModifiedAt": "2026-11-04T05:37:46.843Z" }
+
+
+### Admin reads full exception history across regions
+GET http://localhost:4004/odata/v4/shipment/ShipmentExceptions
+Authorization: Basic admin:admin123
+
+### Admin reads the full audit log
+GET http://localhost:4004/odata/v4/shipment/AuditLog
+Authorization: Basic admin:admin123

@@ -39,6 +39,7 @@
         "us.viewer": { "password": "us123", "roles": ["ShipmentViewer"], "attr": { "region": "US" } },
         "operator": { "password": "operator123", "roles": ["ShipmentViewer", "ShipmentOperator"], "attr": { "region": "IN" } },
         "manager": { "password": "manager123", "roles": ["ShipmentViewer", "ShipmentOperator", "ShipmentManager"], "attr": { "region": "IN" } },
+        "admin": { "password": "admin123", "roles": ["ShipmentAdmin"] },
         "*": false
     }
 }
